@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Формы в React</title>
+</head>
+<body>
+    <div id="container"></div>
+       
+    <script src="https://unpkg.com/react@15/dist/react.js"></script>
+    <script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.38/browser.min.js"></script>
+       
+    <script type="text/babel">
+	
+	function get_data() {
+		var advertisement_arr = [];
+		if ( localStorage.length ) { // если в localStorage что то есть
+					//localStorage.clear();
+					
+					for (var id in localStorage) { //формируем массив с данными
+						
+						if (id[0].match(/\d/)) { //если первый символ key цифра
+							advertisement_arr.push( {key : id,
+												chapter : localStorage[id],
+												advertisement : localStorage['advertisement'+id],
+												phone : localStorage['phone'+id]
+												} );
+						} 
+						
+					}
+		}
+		return advertisement_arr;
+	}
+    class AdvertisementForm extends React.Component {
+      constructor(props) {
+        super(props);
+		
+		var id = props.id;
+        var chapter = props.chapter;
+        var chapterIsValid = this.validateChapter(chapter);
+		var advertisement = props.advertisement;
+        var advertisementIsValid = this.validateAdvertisement(advertisement);
+        var phone = props.phone;
+        var phoneIsValid = this.validatePhone(phone);
+        this.state = {chapter: chapter,
+					advertisement: advertisement,
+					phone: phone,
+					chapterValid: chapterIsValid,
+					advertisementValid: advertisementIsValid,
+					phoneValid: phoneIsValid
+					};
+  
+        this.onChapterChange = this.onChapterChange.bind(this);
+		this.onAdvertisementChange = this.onAdvertisementChange.bind(this);
+        this.onPhoneChange = this.onPhoneChange.bind(this);
+        this.addAdvertisement = this.addAdvertisement.bind(this);
+      }
+        
+        validateChapter(chapter){
+            if( chapter.length>0 && chapter.length<=100 ) {
+				return true;
+			} else {
+				return false;
+			}
+        }
+        validateAdvertisement(advertisement){
+            if(advertisement.length<=300) {
+				return true;
+			} else {
+				return false;
+			}
+        }
+		validatePhone(phone){
+			var rf_num=/^\8\d{10}/;
+            if( rf_num.test(phone) && phone.length==11) {
+				return true;
+			} else {
+				return false;
+			}
+        }
+		
+        onChapterChange(e) {
+            var val = e.target.value;
+            //console.log(val);
+            var valid = this.validateChapter(val);
+            this.setState({chapter: val, chapterValid: valid});
+        }
+		onAdvertisementChange(e) {
+            var val = e.target.value;
+            var valid = this.validateAdvertisement(val);
+            this.setState({advertisement: val, advertisementValid: valid});
+        }
+		onPhoneChange(e) {
+            var val = e.target.value;
+            var valid = this.validatePhone(val);
+            this.setState({phone: val, phoneValid: valid});
+        }
+		
+        addAdvertisement(e) {
+            e.preventDefault();
+			
+			if( this.state.chapterValid && this.state.advertisementValid && this.state.phoneValid ) {
+			
+				if( this.props.id.length != 0 ) { //если мы передали id и нужно перезаписать обьявление
+					
+					localStorage.setItem(this.props.id, this.state.chapter);
+					localStorage.setItem('advertisement'+this.props.id, this.state.advertisement);
+					localStorage.setItem('phone'+this.props.id, this.state.phone);
+					
+					update_Advertisement(this.props.id, this.state.chapter, this.state.advertisement, this.state.phone);
+				} else {	//если добавляем новое обьявление
+					
+					var id = 0;
+					if ( localStorage.length ) {
+						id = localStorage.length/3;
+					}
+					var i = 0;
+					
+					while (localStorage[id + i]) {
+						  i=i+1;
+					}
+					id = id + i;
+					localStorage.setItem( id, this.state.chapter );
+					localStorage.setItem( 'advertisement'+id, this.state.advertisement );
+					localStorage.setItem( 'phone'+id, this.state.phone );
+					update_CommentBox();
+				}
+			} else {
+				alert("Введите корректные данные");
+			}
+						
+        }
+  
+        render() {
+            // цвет границы для поля для ввода заголовка
+            var chapterColor = this.state.chapterValid===true?"green":"red";
+            // цвет границы для поля для ввода обьявления
+            var advertisementColor = this.state.advertisementValid===true?"green":"red";
+			// цвет границы для поля для ввода возраста
+            var phoneColor = this.state.phoneValid===true?"green":"red";
+            return (
+                <form onSubmit={this.addAdvertisement}>
+                    <p>
+                        <label>Заголовок:</label><br />
+                        <input type="text" value={this.state.chapter} 
+                            onChange={this.onChapterChange} style={{borderColor:chapterColor}} />
+                    </p>
+					<p>
+                        <label>Объявление:</label><br />
+                        <input type="text" value={this.state.advertisement} 
+                            onChange={this.onAdvertisementChange}  style={{borderColor:advertisementColor}} />
+                    </p>
+                    <p>
+                        <label>Телефон:</label><br />
+                        <input type="text" placeholder="89999999" value={this.state.phone} 
+                            onChange={this.onPhoneChange}  style={{borderColor:phoneColor}} />
+                    </p>
+                    <input type="submit" value="Отправить" />
+                </form>
+            );
+        }
+    }
+	
+	class Advertisement extends React.Component {
+	  constructor(props) {
+		super(props);
+		this.delete = this.delete.bind(this);
+		this.update = this.update.bind(this);
+	  }
+
+	  delete() {
+		
+		var id = this.props.id;
+		localStorage.removeItem(id);
+		localStorage.removeItem('advertisement'+id);
+		localStorage.removeItem('phone'+id);
+		//console.log(localStorage);
+		update_CommentBox();
+	  }
+	  
+	  update() {
+		
+		update_AdvertisementForm(this.props.id, this.props.chapter, this.props.children, this.props.phone);
+	  }
+
+	  render() {
+		return (
+		<div id={this.props.id}  className="advertisement_div">
+			<h2 className="chapter">
+			  {this.props.chapter}
+			</h2>
+			<p className="advertisement">
+			{this.props.children}
+			</p>
+			<p className="phone">
+			{this.props.phone}
+			</p>
+			<p>
+				<button onClick={this.delete}>Удалить</button>
+				<button onClick={this.update}>Обновить</button>
+			</p>
+		  </div>
+		);
+	  }
+	}
+	
+	var AdvertisementList = React.createClass({
+	  render: function() {
+		var advertisementList = this.props.data.map(function(ad) {
+		  return (
+			<Advertisement key={ad.key} id={ad.key} chapter={ad.chapter} phone={ad.phone}>
+			  {ad.advertisement}
+			</Advertisement>
+		  );
+		});
+		return (
+		  <div className="AdvertisementList">
+			{advertisementList}
+		  </div>
+		);
+	  }
+	});
+	
+	var CommentBox = React.createClass({
+	  render: function() {
+		return (
+		  <div className="commentBox">
+			<AdvertisementForm id='' chapter='' advertisement='' phone='' />
+			<AdvertisementList data={this.props.data} />
+		  </div>
+		);
+	  }
+	});
+	
+    ReactDOM.render(
+        <CommentBox data={get_data()} />,
+        document.getElementById("container")
+    )
+	
+	function update_CommentBox() {
+	  ReactDOM.render(
+			<CommentBox data={get_data()} />,
+			document.getElementById("container")
+		)
+	}
+	
+	function update_AdvertisementForm(id, chapter, advertisement, phone) {
+		
+	  ReactDOM.render(
+			<AdvertisementForm id={id} chapter={chapter} advertisement={advertisement} phone={phone} />,
+			document.getElementById(id)
+		)
+	}
+	
+	function update_Advertisement(id, chapter, advertisement, phone) {
+		
+	  ReactDOM.render(
+			<Advertisement key={id} id={id} chapter={chapter} phone={phone}>
+			  {advertisement}
+			</Advertisement>,
+			document.getElementById(id)
+		)
+	}
+	
+    </script>
+</body>
+</html>
